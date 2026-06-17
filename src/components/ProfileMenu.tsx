@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, KeyboardEvent } from 'react';
 
 interface Props {
   onSettings: () => void;
@@ -10,29 +10,57 @@ export default function ProfileMenu({ onSettings, onLogout }: Props) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as Node;
+      // FIXED: Ensure the target node is genuinely mounted in the document DOM tree before checking containment
+      if (ref.current && target && document.body.contains(target) && !ref.current.contains(target)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
+  // FIXED: Handle standard accessibility keyboard escaping natively
+  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Escape') {
+      setOpen(false);
+    }
+  };
+
   const menuItem = (onClick: () => void, children: React.ReactNode, danger = false) => (
-    <button onClick={onClick}
+    <button 
+      onClick={onClick}
+      type="button"
+      role="menuitem"
+      tabIndex={open ? 0 : -1} // FIXED: Prevent hidden background elements from catching tab highlights
       style={{
         width: '100%', display: 'flex', alignItems: 'center', gap: 10,
         padding: '10px 14px', border: 'none', background: 'transparent',
         color: danger ? '#dc2626' : 'var(--text-2)', fontSize: 13,
         cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s',
       }}
-      onMouseEnter={e => { e.currentTarget.style.background = danger ? 'rgba(220,38,38,0.08)' : 'var(--bg-4)'; if (!danger) e.currentTarget.style.color = 'var(--text)'; }}
-      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = danger ? '#dc2626' : 'var(--text-2)'; }}
+      onMouseEnter={e => { 
+        e.currentTarget.style.background = danger ? 'rgba(220,38,38,0.08)' : 'var(--bg-4)'; 
+        if (!danger) e.currentTarget.style.color = 'var(--text)'; 
+      }}
+      onMouseLeave={e => { 
+        e.currentTarget.style.background = 'transparent'; 
+        e.currentTarget.style.color = danger ? '#dc2626' : 'var(--text-2)'; 
+      }}
     >
       {children}
     </button>
   );
 
   return (
-    <div ref={ref} style={{ position: 'relative' }}>
-      <button onClick={() => setOpen(v => !v)}
+    <div ref={ref} onKeyDown={handleKeyDown} style={{ position: 'relative' }}>
+      <button 
+        onClick={() => setOpen(v => !v)}
+        type="button"
+        aria-haspopup="true"
+        aria-expanded={open} // FIXED: Expose the structural interaction framework safely to standard screen readers
         style={{
           width: '100%', display: 'flex', alignItems: 'center', gap: 10,
           padding: '8px 12px', borderRadius: 10, border: 'none',
@@ -47,10 +75,12 @@ export default function ProfileMenu({ onSettings, onLogout }: Props) {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexShrink: 0, fontSize: 12, fontWeight: 700, color: '#fff',
         }}>U</div>
+        
         <div style={{ flex: 1, textAlign: 'left' }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>My Profile</div>
           <div style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 1 }}>Free Plan</div>
         </div>
+        
         <svg width="12" height="12" viewBox="0 0 24 24" fill="var(--text-4)"
           style={{ transform: open ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }}>
           <path d="M7 10l5 5 5-5z" />
@@ -58,11 +88,15 @@ export default function ProfileMenu({ onSettings, onLogout }: Props) {
       </button>
 
       {open && (
-        <div style={{
-          position: 'absolute', bottom: '100%', left: 8, right: 8, marginBottom: 6,
-          background: 'var(--bg-2)', border: '1px solid var(--border-2)',
-          borderRadius: 12, boxShadow: 'var(--shadow)', overflow: 'hidden', zIndex: 100,
-        }}>
+        <div 
+          role="menu"
+          aria-label="Profile options"
+          style={{
+            position: 'absolute', bottom: '100%', left: 8, right: 8, marginBottom: 6,
+            background: 'var(--bg-2)', border: '1px solid var(--border-2)',
+            borderRadius: 12, boxShadow: 'var(--shadow)', overflow: 'hidden', zIndex: 100,
+          }}
+        >
           <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{

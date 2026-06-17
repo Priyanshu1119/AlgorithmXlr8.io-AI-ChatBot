@@ -3,6 +3,7 @@ import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import type { Message } from '../types';
+import React from 'react';
 
 interface Props {
   message: Message;
@@ -53,16 +54,24 @@ export default function MessageBubble({ message }: Props) {
           </div>
 
           {isUser ? (
-            <div style={{ fontSize: 14, color: 'var(--text)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+            <div style={{ fontSize: 14, color: 'var(--text)', lineHeight: 1.7, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
               {message.content}
             </div>
           ) : (
-            <div style={{ fontSize: 14, color: 'var(--text-2)', lineHeight: 1.75 }}>
+            <div style={{ fontSize: 14, color: 'var(--text-2)', lineHeight: 1.75, wordBreak: 'break-word' }}>
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
-                  code({ className, children }) {
+                  code({ className, children, ...props }) {
                     const match = /language-(\w+)/.exec(className || '');
+                    
+                    // FIXED: Safely unpack children elements whether they are arrays or strings
+                    const contentValue = Array.isArray(children) 
+                      ? children.join('') 
+                      : String(children ?? '');
+                    
+                    const normalizedCode = contentValue.replace(/\n$/, '');
+
                     return match ? (
                       <div style={{ margin: '14px 0', borderRadius: 10, overflow: 'hidden', border: '1px solid #1f1f1f' }}>
                         <div style={{
@@ -80,32 +89,40 @@ export default function MessageBubble({ message }: Props) {
                           PreTag="div"
                           customStyle={{ margin: 0, borderRadius: 0, fontSize: 13, background: '#0d0d0d', padding: '16px' }}
                         >
-                          {String(children).replace(/\n$/, '')}
+                          {normalizedCode}
                         </SyntaxHighlighter>
                       </div>
                     ) : (
-                      <code style={{
-                        background: 'var(--bg-4)', color: '#60a5fa',
-                        padding: '2px 6px', borderRadius: 5,
-                        fontSize: 12.5, fontFamily: 'monospace',
-                        border: '1px solid var(--border-2)',
-                      }}>
+                      // FIXED: Added fallback styling bounds for inline backtick scenarios
+                      <code 
+                        {...props}
+                        style={{
+                          background: 'var(--bg-4)', color: '#60a5fa',
+                          padding: '2px 6px', borderRadius: 5,
+                          fontSize: 12.5, fontFamily: 'monospace',
+                          border: '1px solid var(--border-2)',
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-all'
+                        }}
+                      >
                         {children}
                       </code>
                     );
                   },
-                  h1: ({ children }) => <h1 style={{ fontSize: 19, fontWeight: 700, color: 'var(--text)', margin: '20px 0 8px', letterSpacing: '-0.03em' }}>{children}</h1>,
-                  h2: ({ children }) => <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', margin: '16px 0 6px', letterSpacing: '-0.02em' }}>{children}</h2>,
-                  h3: ({ children }) => <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-2)', margin: '12px 0 4px', letterSpacing: '-0.01em' }}>{children}</h3>,
+                  // FIXED: Added implicit overflow boundaries on all text fields
+                  h1: ({ children }) => <h1 style={{ fontSize: 19, fontWeight: 700, color: 'var(--text)', margin: '20px 0 8px', letterSpacing: '-0.03em', wordBreak: 'break-word' }}>{children}</h1>,
+                  h2: ({ children }) => <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', margin: '16px 0 6px', letterSpacing: '-0.02em', wordBreak: 'break-word' }}>{children}</h2>,
+                  h3: ({ children }) => <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-2)', margin: '12px 0 4px', letterSpacing: '-0.01em', wordBreak: 'break-word' }}>{children}</h3>,
                   strong: ({ children }) => <strong style={{ fontWeight: 600, color: 'var(--text)' }}>{children}</strong>,
-                  p: ({ children }) => <p style={{ marginBottom: 10, color: 'var(--text-2)', lineHeight: 1.75 }}>{children}</p>,
+                  p: ({ children }) => <p style={{ marginBottom: 10, color: 'var(--text-2)', lineHeight: 1.75, wordBreak: 'break-word' }}>{children}</p>,
                   ul: ({ children }) => <ul style={{ paddingLeft: 20, marginBottom: 10, color: 'var(--text-2)' }}>{children}</ul>,
                   ol: ({ children }) => <ol style={{ paddingLeft: 20, marginBottom: 10, color: 'var(--text-2)' }}>{children}</ol>,
-                  li: ({ children }) => <li style={{ marginBottom: 3, lineHeight: 1.7 }}>{children}</li>,
+                  li: ({ children }) => <li style={{ marginBottom: 3, lineHeight: 1.7, wordBreak: 'break-word' }}>{children}</li>,
                   blockquote: ({ children }) => (
                     <blockquote style={{
                       borderLeft: '3px solid var(--blue-dark)', paddingLeft: 14,
                       margin: '12px 0', color: 'var(--text-3)', fontStyle: 'italic',
+                      wordBreak: 'break-word'
                     }}>
                       {children}
                     </blockquote>

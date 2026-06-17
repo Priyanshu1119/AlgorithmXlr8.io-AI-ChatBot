@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, FormEvent } from 'react';
 
 interface Props {
   onSave: (key: string) => void;
@@ -9,12 +9,22 @@ export default function ApiKeyModal({ onSave }: Props) {
   const [error, setError] = useState('');
   const [focused, setFocused] = useState(false);
 
-  const handleSave = () => {
-    const trimmed = key.trim();
-    if (!trimmed.startsWith('gsk_') || trimmed.length < 20) {
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault(); // Prevents page reload
+    
+    let trimmed = key.trim();
+
+    // Auto-fix common prefix duplication bugs (like ggsk_)
+    if (trimmed.startsWith('ggsk_')) {
+      trimmed = trimmed.substring(1);
+    }
+
+    // Comprehensive format verification
+    if (!trimmed.startsWith('gsk_') || trimmed.length < 25) {
       setError('Enter a valid Groq API key starting with gsk_');
       return;
     }
+
     onSave(trimmed);
   };
 
@@ -24,7 +34,8 @@ export default function ApiKeyModal({ onSave }: Props) {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: 20, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)',
     }}>
-      <div style={{
+      {/* Changed layout container wrapper to an semantic HTML Form element */}
+      <form onSubmit={handleSubmit} style={{
         width: '100%', maxWidth: 400,
         background: 'var(--bg-2)', border: '1px solid var(--border-2)',
         borderRadius: 18, padding: 32,
@@ -68,14 +79,15 @@ export default function ApiKeyModal({ onSave }: Props) {
           onChange={e => { setKey(e.target.value); setError(''); }}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          onKeyDown={e => e.key === 'Enter' && handleSave()}
           placeholder="gsk_••••••••••••••••••••"
           style={{
             width: '100%', padding: '11px 14px',
             background: 'var(--bg)',
-            border: `1px solid ${error ? '#dc2626' : focused ? 'var(--blue-dark)' : 'var(--border-2)'}`,
+            // Cleaned up border logic interpolation for smoother transitions
+            border: '1px solid',
+            borderColor: error ? '#dc2626' : focused ? 'var(--blue-dark)' : 'var(--border-2)',
             borderRadius: 10, outline: 'none',
-            color: 'var(--text)', fontSize: 14, transition: 'border-color 0.15s', marginBottom: 6,
+            color: 'var(--text)', fontSize: 14, transition: 'border-color 0.15s ease', marginBottom: 6,
           }}
         />
         {error && <p style={{ fontSize: 12, color: '#dc2626', marginBottom: 8 }}>{error}</p>}
@@ -88,7 +100,8 @@ export default function ApiKeyModal({ onSave }: Props) {
           Get your free API key at console.groq.com →
         </a>
 
-        <button onClick={handleSave}
+        {/* Changed button to native submit type */}
+        <button type="submit"
           style={{
             width: '100%', padding: '12px', borderRadius: 11,
             border: 'none', background: 'var(--blue-dark)', color: '#fff',
@@ -102,7 +115,7 @@ export default function ApiKeyModal({ onSave }: Props) {
         <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-4)', marginTop: 14 }}>
           Stored locally · Never shared
         </p>
-      </div>
+      </form>
     </div>
   );
 }

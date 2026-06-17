@@ -1,4 +1,4 @@
-import { useState, useRef, KeyboardEvent } from 'react';
+import { useState, useRef, KeyboardEvent, ChangeEvent } from 'react';
 
 interface Props {
   onSend: (text: string) => void;
@@ -10,21 +10,34 @@ export default function ChatInput({ onSend, isLoading }: Props) {
   const [focused, setFocused] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
 
+  // Safely recalculates scroll height configurations inline
+  const adjustHeight = (reset = false) => {
+    if (!ref.current) return;
+    ref.current.style.height = 'auto';
+    if (!reset) {
+      ref.current.style.height = `${Math.min(ref.current.scrollHeight, 180)}px`;
+    }
+  };
+
   const handleSend = () => {
     if (!value.trim() || isLoading) return;
     onSend(value.trim());
     setValue('');
-    if (ref.current) ref.current.style.height = 'auto';
+    // Safely sync wrapper dimensions to standard row bounds after clear
+    setTimeout(() => adjustHeight(true), 0);
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+    // e.nativeEvent.isComposing prevents submission during active character generation
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      handleSend();
+    }
   };
 
-  const handleInput = () => {
-    if (!ref.current) return;
-    ref.current.style.height = 'auto';
-    ref.current.style.height = Math.min(ref.current.scrollHeight, 180) + 'px';
+  const handleInputChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
+    setValue(e.target.value);
+    adjustHeight();
   };
 
   const canSend = !!value.trim() && !isLoading;
@@ -36,19 +49,19 @@ export default function ChatInput({ onSend, isLoading }: Props) {
           className={focused ? 'input-focused' : ''}
           style={{
             background: 'var(--bg-3)',
-            border: `1px solid ${focused ? 'var(--border-2)' : 'var(--border)'}`,
+            border: '1px solid',
+            borderColor: focused ? 'var(--blue)' : 'var(--border)',
             borderRadius: 16,
-            transition: 'border-color 0.2s, box-shadow 0.2s',
-            boxShadow: focused ? undefined : '0 2px 8px rgba(0,0,0,0.2)',
+            transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+            boxShadow: focused ? '0 0 0 2px var(--blue-dark)' : '0 2px 8px rgba(0,0,0,0.2)',
           }}
         >
           <div style={{ padding: '14px 18px 6px' }}>
             <textarea
               ref={ref}
               value={value}
-              onChange={e => setValue(e.target.value)}
+              onChange={handleInputChange}
               onKeyDown={handleKeyDown}
-              onInput={handleInput}
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
               placeholder="Ask about DSA or System Design..."
@@ -75,6 +88,7 @@ export default function ChatInput({ onSend, isLoading }: Props) {
               onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-4)'; e.currentTarget.style.color = 'var(--text-3)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-4)'; }}
               title="Attach"
+              type="button"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
@@ -92,6 +106,7 @@ export default function ChatInput({ onSend, isLoading }: Props) {
               <button
                 onClick={handleSend}
                 disabled={!canSend}
+                type="button"
                 style={{
                   width: 32, height: 32, borderRadius: 9, border: 'none', flexShrink: 0,
                   background: canSend ? 'var(--blue-dark)' : 'var(--bg-4)',

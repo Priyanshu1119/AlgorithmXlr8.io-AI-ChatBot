@@ -1,4 +1,4 @@
-import { useState, useRef, KeyboardEvent } from 'react';
+import { useState, useRef, KeyboardEvent, ChangeEvent } from 'react';
 
 interface Props {
   onPrompt: (text: string) => void;
@@ -18,21 +18,36 @@ export default function EmptyState({ onPrompt, onLogin, isLoggedIn }: Props) {
   const [focused, setFocused] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
 
+  // Helper function to safely manage input layout sizing runs
+  const adjustHeight = (reset = false) => {
+    if (!ref.current) return;
+    ref.current.style.height = 'auto';
+    if (!reset) {
+      ref.current.style.height = `${Math.min(ref.current.scrollHeight, 140)}px`;
+    }
+  };
+
   const handleSend = () => {
     if (!value.trim()) return;
     if (!isLoggedIn) { onLogin(); return; }
+    
     onPrompt(value.trim());
     setValue('');
+    // Safely sync textarea layout dimensions to standard row footprint
+    setTimeout(() => adjustHeight(true), 0);
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+    // e.nativeEvent.isComposing guarantees system IME input selection blocks submission
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      handleSend();
+    }
   };
 
-  const handleInput = () => {
-    if (!ref.current) return;
-    ref.current.style.height = 'auto';
-    ref.current.style.height = Math.min(ref.current.scrollHeight, 140) + 'px';
+  const handleInputChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
+    setValue(e.target.value);
+    adjustHeight();
   };
 
   const handleChip = (label: string) => {
@@ -43,7 +58,8 @@ export default function EmptyState({ onPrompt, onLogin, isLoggedIn }: Props) {
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', alignItems: 'center',
-      justifyContent: 'center', height: '100%', padding: '0 24px',
+      justifyContent: 'center', minHeight: '100%', padding: '40px 24px',
+      boxSizing: 'border-box', overflowY: 'auto',
     }}>
 
       {/* Logo centered above greeting */}
@@ -88,19 +104,19 @@ export default function EmptyState({ onPrompt, onLogin, isLoggedIn }: Props) {
           className={focused ? 'input-focused' : ''}
           style={{
             background: 'var(--bg-3)',
-            border: `1px solid ${focused ? 'var(--border-2)' : 'var(--border)'}`,
+            border: '1px solid',
+            borderColor: focused ? 'var(--blue)' : 'var(--border)',
             borderRadius: 18,
-            transition: 'border-color 0.2s, box-shadow 0.2s',
-            boxShadow: focused ? undefined : '0 2px 12px rgba(0,0,0,0.25)',
+            transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+            boxShadow: focused ? '0 0 0 2px var(--blue-dark)' : '0 2px 12px rgba(0,0,0,0.25)',
           }}
         >
           <div style={{ padding: '18px 20px 10px' }}>
             <textarea
               ref={ref}
               value={value}
-              onChange={e => setValue(e.target.value)}
+              onChange={handleInputChange}
               onKeyDown={handleKeyDown}
-              onInput={handleInput}
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
               placeholder="How can I help you today?"
@@ -127,6 +143,7 @@ export default function EmptyState({ onPrompt, onLogin, isLoggedIn }: Props) {
               onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-4)'; e.currentTarget.style.color = 'var(--text-3)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-4)'; }}
               title="Attach"
+              type="button"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
@@ -144,6 +161,7 @@ export default function EmptyState({ onPrompt, onLogin, isLoggedIn }: Props) {
               <button
                 onClick={handleSend}
                 disabled={!value.trim()}
+                type="button"
                 style={{
                   width: 34, height: 34, borderRadius: 10, border: 'none',
                   background: value.trim() ? 'var(--blue-dark)' : 'var(--bg-4)',
@@ -167,7 +185,7 @@ export default function EmptyState({ onPrompt, onLogin, isLoggedIn }: Props) {
       {/* Chips */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', maxWidth: 660 }}>
         {CHIPS.map(label => (
-          <button key={label} onClick={() => handleChip(label)}
+          <button key={label} onClick={() => handleChip(label)} type="button"
             style={{
               padding: '8px 16px', borderRadius: 99,
               border: '1px solid var(--border-2)',

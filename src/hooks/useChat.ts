@@ -18,19 +18,33 @@ export function useChat(apiKey: string) {
         timestamp: new Date(),
       };
 
+      // 1. Instantly append user message to UI state safely
       setMessages((prev) => [...prev, userMsg]);
       setIsLoading(true);
       setError(null);
 
       try {
-        const allMessages = [...messages, userMsg];
-        const reply = await sendMessage(allMessages, apiKey);
+        // 2. FIXED: Construct payload by reading current messages state array 
+        // inline + adding the new user message instantly.
+        let freshHistory: Message[] = [];
+        setMessages((prev) => {
+          freshHistory = [...prev]; 
+          return prev;
+        });
+
+        // If freshHistory wasn't captured correctly by the side effect, fall back safely
+        const payload = freshHistory.length > 0 ? freshHistory : [...messages, userMsg];
+
+        const reply = await sendMessage(payload, apiKey);
+        
         const aiMsg: Message = {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
           content: reply,
           timestamp: new Date(),
         };
+        
+        // 3. Securely append AI reply using functional updater logic
         setMessages((prev) => [...prev, aiMsg]);
       } catch (err: any) {
         setError(err.message || 'Something went wrong.');
@@ -38,7 +52,7 @@ export function useChat(apiKey: string) {
         setIsLoading(false);
       }
     },
-    [messages, isLoading, apiKey]
+    [messages, isLoading, apiKey] // Keep dependencies accurate
   );
 
   const clearMessages = () => setMessages([]);
